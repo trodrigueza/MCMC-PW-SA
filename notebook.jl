@@ -15,7 +15,7 @@ macro bind(def, element)
 end
 
 # ╔═╡ 21f893a8-364f-4324-83d0-5d0871c9951c
-using Pkg, PlutoUI, Graphs, GLMakie, GraphMakie, Makie.Colors, GraphMakie.NetworkLayout, Random, CSV, DataFrames, Plots
+using Pkg, PlutoUI, Graphs, GLMakie, GraphMakie, Makie.Colors, GraphMakie.NetworkLayout, Random, CSV, DataFrames, Plots, Statistics
 
 # ╔═╡ c5bb328c-f0cf-4f1a-9073-5f0ab56754ff
 html"""
@@ -49,25 +49,30 @@ md"""
 #### Solución:
 """
 
+# ╔═╡ ff199a3a-03ea-4ae6-bf76-34b5b4eafdbd
+md"""
+Definamos el valor de $k$:
+"""
+
 # ╔═╡ ebd6a3a8-6b6b-4ea5-97a8-f291f0e81aca
 @bind k PlutoUI.Slider(5:20; default = 5, show_value = true) # Tamaño grilla
 
 # ╔═╡ 3d12d5be-2115-4b36-b26b-28ffd41e66ea
 k
 
+# ╔═╡ 0c7de18e-395b-41d1-9ef3-3953ada334a0
+md"""
+Inicialicemos el grafo reticular, haciendo uso de la librería *Graphs*:
+"""
+
 # ╔═╡ 63c6c42b-bc6e-4b83-b696-4d1931bf7dff
-g_1a = Graphs.grid([k, k])
+begin
+	g_1a = Graphs.grid([k, k]) # Grafo reticular kxk
+	vcolor_1a = [:white for i in 1:nv(g_1a)];
+	custom_layout_1a = [(i,j) for i = 0:0.1:( (k-1)*0.1 ) for j = 0:0.1:( (k-1)*0.1)];
+end
 
-# ╔═╡ 32c25dd2-a1bc-4896-b7d1-21383f8dca0f
-custom_layout_1a = [(i,j) for i = 0:0.1:( (k-1)*0.1 ) for j = 0:0.1:( (k-1)*0.1 ) ]
-
-# ╔═╡ fa0b5700-70b6-4c9e-be15-cb6efcf2e3b3
-vcolor_1a = [:white for i in 1:nv(g_1a)]
-
-# ╔═╡ beaf8a57-b366-4420-b969-c17ee9e87c79
-beta_1a = 0.01
-
-# ╔═╡ 289ece15-e392-42fb-8333-3ad54c11e9e5
+# ╔═╡ bf627da0-86fa-45c0-b348-c5aae64ef1d2
 begin
 	f_1a, ax_1a, p_1a = graphplot(g_1a; layout= custom_layout_1a, node_color=vcolor_1a, edge_width=0.3, node_size=20);
 	hidedecorations!(ax_1a)
@@ -79,6 +84,14 @@ end
 
 # ╔═╡ 95d91788-a726-4200-ad67-064518d46cf4
 f_1a
+
+# ╔═╡ 27fe66e1-bca4-43b4-b80b-5cdc0b7c8461
+md"""
+Definamos el valor de $\beta$:
+"""
+
+# ╔═╡ 811221c2-2133-4cd4-9d4d-4714c553b621
+beta_1a = 0.01
 
 # ╔═╡ 37516509-755f-4362-84da-2848fa60e586
 function neighbor_vertex(g, v, p)	
@@ -103,6 +116,11 @@ function neighbor_vertex(g, v, p)
 
 	return k_plus, k_minus
 end
+
+# ╔═╡ ad768f1a-fe16-4008-a542-02868749e74a
+md"""
+Implementamos el Gibbs sampler:
+"""
 
 # ╔═╡ ab00a194-cad5-4d06-a469-76cc4c14491d
 # Construcción Gibbs Sampler
@@ -133,13 +151,170 @@ function gibbs_sampler(g, p)
 	# println(u_n1 < bound_upp)	
 end
 
+# ╔═╡ 05996613-b1ea-4ece-8db1-417c2e8a4bd6
+md"""
+Corremos la cadena con un total de $10^5$ pasos:
+"""
+
 # ╔═╡ 3f01aab6-a5da-40bc-86ba-dce594064160
-for i in range(0, 10^5)
-	gibbs_sampler(g_1a, p_1a)
+begin
+	states = []
+	Random.seed!(100) # Semilla para replicar resultados
+	for i in range(1, 10^5)
+		gibbs_sampler(g_1a, p_1a)
+		if i in [10^3, 10^4, 10^5]
+            push!(states, copy(p_1a.node_color[]))
+        end
+	end
 end
 
+# ╔═╡ b255ad35-f334-4e1d-acb6-c55f75ce0193
+md"""
+Visualicemos $X_{10^3}$, $X_{10^4}$ y $X_{10^5}$:
+"""
+
 # ╔═╡ 8b871b8a-ed78-42f9-a584-d4940978dcac
-f_1a
+begin
+	fig_ = Figure(size = (900, 300))
+	axes_ = [Axis(fig_[1, i], aspect = DataAspect()) for i in 1:3]
+	for (i, state) in enumerate(states)
+    	graphplot!(axes_[i], g_1a; layout=custom_layout_1a,
+               node_color=state, edge_width=0.3, node_size=20)
+    	hidedecorations!(axes_[i])
+    	hidespines!(axes_[i])
+    	axes_[i].title = "t = 10^$(i+2)"
+	end
+	fig_[0, :] = Label(fig_, "Evolución modelo de Ising (ε = 0.01)", fontsize = 20)
+end
+
+# ╔═╡ d8a99d5d-badf-4fb2-88a9-dbd42162b133
+fig_
+
+# ╔═╡ 72fc53a4-bad3-42e1-af67-8e158d3b779b
+function neighbor_vertex_(g, v, node_colors)
+    k_plus = 0
+    k_minus = 0
+    
+    for i in edges(g)
+        if src(i) == v
+            if node_colors[dst(i)] == :white
+                k_minus += 1
+            elseif node_colors[dst(i)] == :black
+                k_plus += 1
+            end
+        elseif dst(i) == v
+            if node_colors[src(i)] == :white
+                k_minus += 1
+            elseif node_colors[src(i)] == :black
+                k_plus += 1
+            end
+        end
+    end
+    
+    return k_plus, k_minus
+end
+
+# ╔═╡ 05064ba4-5aec-47a3-92b8-1de6c85592e3
+function gibbs_sampler_(g, node_colors, beta)
+    v = rand(1:nv(g))
+    k_plus, k_minus = neighbor_vertex_(g, v, node_colors)
+    
+    u_n1 = rand()
+    bound_upp = exp(2*beta*(k_plus - k_minus)) / (exp(2*beta*(k_plus - k_minus)) + 1)
+    
+    if u_n1 < bound_upp
+        node_colors[v] = :black
+    else
+        node_colors[v] = :white
+    end
+    
+    return node_colors
+end
+
+# ╔═╡ 9502e607-dd73-4042-b40f-5ba4f5030e1f
+md"""
+Para generar las $100$ muestras, consideremos $\beta = 0.1, 0.4, 0.9$.
+"""
+
+# ╔═╡ c4279dfa-30bd-44f0-ba5d-2cd6156c4a44
+beta_values = [0.1, 0.4, 0.9]
+
+# ╔═╡ 4b069e6a-6db6-44d0-8425-1294a52d954c
+md"""
+Inicializamos un diccionario para guardar las muestras:
+"""
+
+# ╔═╡ 9694d02e-67be-415c-8cfd-1759e742da75
+samples = Dict{Float64, Vector{Vector{Vector{Symbol}}}}()
+
+# ╔═╡ e4f44101-8cde-4d3e-ae59-6b143af3ad60
+md"""
+Generamos las muestras por cada valor de $\beta$:
+"""
+
+# ╔═╡ d1f2ee83-4b86-480a-ab7d-9657279351ba
+for beta in beta_values
+	Random.seed!(100) # Semilla para replicar resultados
+    samples[beta] = Vector{Vector{Vector{Symbol}}}()
+    
+    # Generar 100 muestras para cada beta
+    for _ in 1:100
+        node_colors = [:white for i in 1:nv(g_1a)]
+        sample_states = Vector{Vector{Symbol}}()
+        
+        # Correr Gibbs sampler
+        for i in 1:10^5
+            node_colors = gibbs_sampler_(g_1a, node_colors, beta)
+            
+            # Guardar estados
+            push!(sample_states, copy(node_colors))
+        end
+        
+        # Guardar estados de la muestra
+        push!(samples[beta], sample_states)
+    end
+end
+
+# ╔═╡ ec3bb15b-10cb-439b-ba80-33ba75798261
+md"""
+Creamos una figura para mostrar los resultados, visualizaremos los estados $X_{10^3}$, $X_{10^4}$ y $X_{10^5}$ de la última muestra obtenida para cada $\beta$.
+"""
+
+# ╔═╡ 53ed3752-1938-46f8-9ca0-6853ffbfb49e
+begin
+	fig = Figure(size = (800, 800))
+	axes = [Axis(fig[i, j], aspect = DataAspect()) for i in 1:3, j in 1:3]
+	for (i, beta) in enumerate(beta_values)
+    	for (j, j1) in enumerate([10^3, 10^4, 10^5])
+        	state_index = j1  # 1 -> 10^3, 2 -> 10^4, 3 -> 10^5
+        	node_colors = samples[beta][end][state_index]
+        
+        	graphplot!(axes[i, j], g_1a; layout=custom_layout_1a,
+                   node_color=node_colors, edge_width=0.3, node_size=20)
+        
+        	hidedecorations!(axes[i, j])
+        	hidespines!(axes[i, j])
+        	axes[i, j].title = "β = $beta, t = 10^$(j+2)"
+    	end
+	end
+end
+
+# ╔═╡ 86658717-3ba2-45e7-8f59-a1c2b0baece2
+fig
+
+# ╔═╡ 623591f6-b80a-4ce1-b84b-9370c844798a
+md"""
+Veamos algunas estadísticas:
+"""
+
+# ╔═╡ a143b4dd-e490-42b7-9e74-de8dd4299f1f
+for beta in beta_values
+    for (j, j1) in enumerate([10^3, 10^4, 10^5])
+        state_index = j1
+        avg_black = mean([count(x -> x == :black, sample[state_index]) for sample in samples[beta]])
+        println("Para β = $beta, t = 10^$(j+2), el promedio de nodos negros es: $avg_black")
+    end
+end
 
 # ╔═╡ bd776356-06db-48ae-9fb1-0c44f88bab48
 md"""
@@ -147,7 +322,137 @@ Podemos construir también una cadena Metropolis, y comparar los dos procedimien
 """
 
 # ╔═╡ 820b72be-2b3b-4575-bbe9-a8a6d33cbd84
+function metropolis_step(g, node_colors, beta)
+    v = rand(1:nv(g))
+    current_color = node_colors[v]
+    proposed_color = (current_color == :white) ? :black : :white
+    
+    # Calcular el cambio en la energía
+    delta_E = 0
+    for neighbor in neighbors(g, v)
+        if node_colors[neighbor] == current_color
+            delta_E += 2
+        else
+            delta_E -= 2
+        end
+    end
+    
+    # Calcular la probabilidad de aceptación
+    acceptance_prob = min(1, exp(-beta * delta_E))
+    
+    # Decidir si aceptar el cambio
+    if rand() < acceptance_prob
+        node_colors[v] = proposed_color
+    end
+    
+    return node_colors
+end
 
+# ╔═╡ 2764bd42-80f7-4f47-9143-1b4afb169a66
+function run_metropolis(g, beta, num_steps)
+    node_colors = [:white for _ in 1:nv(g)]
+    samples = Vector{Vector{Symbol}}()
+    
+    for step in 1:num_steps
+        node_colors = metropolis_step(g, node_colors, beta)
+        
+
+            push!(samples, copy(node_colors))
+        
+    end
+    
+    return samples
+end
+
+# ╔═╡ 04aef209-c47e-4c58-bd0f-01b2a7796a50
+md"""
+Generamos las muestras:
+"""
+
+# ╔═╡ 69f25093-437e-4979-b06d-5d665b3300b8
+begin
+	Random.seed!(100) # Semilla para replicar resultados
+	samples_m = Dict{Float64, Vector{Vector{Vector{Symbol}}}}()
+		
+	for beta in beta_values
+	    samples_m[beta] = [run_metropolis(g_1a, beta, 10^5) for _ in 1:100]
+	end
+end
+
+# ╔═╡ b91d1240-3f61-489b-a7ad-1f1e7fb6854a
+md"""
+Y visualizamos los estados $X_{10^3}$, $X_{10^4}$ y $X_{10^5}$ de la última muestra obtenida para cada $\beta$:
+"""
+
+# ╔═╡ 8071e7d2-5349-4e8c-8579-78ced716a7ac
+begin
+	fig1 = Figure(size = (800, 800))
+	axes1 = [Axis(fig1[i, j], aspect = DataAspect()) for i in 1:3, j in 1:3]
+	for (i, beta) in enumerate(beta_values)
+    	for (j, j1) in enumerate([10^3, 10^4, 10^5])
+        	state_index1 = j1  # 1 -> 10^3, 2 -> 10^4, 3 -> 10^5
+        	node_colors1 = samples_m[beta][end][state_index1]
+        
+        	graphplot!(axes1[i, j], g_1a; layout=custom_layout_1a,
+                   node_color=node_colors1, edge_width=0.3, node_size=20)
+        
+        	hidedecorations!(axes1[i, j])
+        	hidespines!(axes1[i, j])
+        	axes1[i, j].title = "β = $beta, t = 10^$(j+2)"
+    	end
+	end
+end
+
+# ╔═╡ 32d58e8b-227d-41a6-98de-136ee0587a12
+fig1
+
+# ╔═╡ 26545262-4656-443b-8a54-86b9a93c45ad
+md"""
+Veamos algunas estadísticas y comparemos con los resultados obtenidos con Gibbs sampler:
+"""
+
+# ╔═╡ eeb78433-b452-41b9-a191-21ad008a5abc
+for beta in beta_values
+    for (j, j1) in enumerate([10^3, 10^4, 10^5])
+        state_index = j1
+        avg_black = mean([count(x -> x == :black, sample[state_index]) for sample in samples_m[beta]])
+        println("Para β = $beta, t = 10^$(j+2), el promedio de nodos negros es: $avg_black")
+    end
+end
+
+# ╔═╡ 61c685d1-6e0e-4a70-a48b-0c7cb643c3b1
+begin
+	function avg_black_nodes(samples)
+    	return mean([count(x -> x == :black, sample) for sample in samples])
+	end
+
+	avg_gibbs = Dict()
+	avg_metropolis = Dict()
+
+	for beta in beta_values
+    	avg_gibbs[beta] = [avg_black_nodes([sample[i] for sample in samples[beta]]) for i in Int.([1, 10, 1e2, 1e3, 1e4, 1e5])]
+    	avg_metropolis[beta] = [avg_black_nodes([sample[i] for sample in samples_m[beta]]) for i in Int.([1, 10, 1e2, 1e3, 1e4, 1e5])]
+	end
+
+	plot_layout = @layout [a; b; c]
+	plots = []
+	times = [1, 10, 1e2, 1e3, 1e4, 1e5]
+
+	for (i, beta) in enumerate(beta_values)
+    	p = Plots.plot(log10.(times), avg_gibbs[beta], label="Gibbs", marker=:circle, 
+             linewidth=2, markersize=6, legend=:bottomright)
+    	Plots.plot!(p, log10.(times), avg_metropolis[beta], label="Metropolis", marker=:square, 
+          linewidth=2, markersize=6, linestyle=:dash)
+    	Plots.xlabel!(p, "log10(tiempo)")
+    	Plots.ylabel!(p, "Promedio de nodos negros")
+    	Plots.title!(p, "β = $(beta)")
+		title!(p, "Comparación Gibbs vs Metropolis β = $(beta)")
+    	push!(plots, p)
+	end
+
+	final_plot = Plots.plot(plots..., layout=plot_layout, size=(800, 800))
+
+end
 
 # ╔═╡ c123050b-b40c-48df-a9a8-0f5b23255cb3
 md"""
@@ -161,7 +466,7 @@ md"""
 
 # ╔═╡ 927b401f-0c12-4534-aa50-0430a9fdc86b
 md"""
-Tomamos el mismo orden parcial que vimos en clase, y tomamos los retículos donde todos los vértices son blancos (O -1) y donde todos los vértices son negros (O +1).
+Tomamos el mismo orden parcial que vimos en clase, y tomamos los retículos donde todos los vértices son blancos (O $-1$) y donde todos los vértices son negros (O $+1$).
 """
 
 # ╔═╡ dea46c42-7a17-4bfd-926e-0b488497cd1d
@@ -227,15 +532,88 @@ m_
 # ╔═╡ 2b0f0ce3-e54c-45b2-a8e1-dfb7242f3a8c
 mi_
 
-# ╔═╡ 70cd7ff4-d196-4a02-8fa6-77b36b49fa4a
+# ╔═╡ 0fac8d0a-b880-4a10-a775-0a1ef2552695
+function Propp_Wilson_iter_(n)
+    g_min = Graphs.grid([k, k])
+    node_colors_min = [:white for i in 1:nv(g_min)]
+    
+    g_max = Graphs.grid([k, k])
+    node_colors_max = [:black for i in 1:nv(g_max)]
+    
+    for i in -2^n:0
+        node_colors_min = gibbs_sampler_(g_min, node_colors_min, beta_1a)
+        node_colors_max = gibbs_sampler_(g_max, node_colors_max, beta_1a)
+    end
+    
+    return node_colors_max, node_colors_min
+end
 
+# ╔═╡ cfdb3fa1-de24-4ff5-a97d-9563f45a81ed
+function run_propp_wilson_()
+    n = 1
+    while true
+        node_colors_max, node_colors_min = Propp_Wilson_iter_(n)
+        
+        n += 1
+        
+        if abs(count(i -> i == :black, node_colors_max) - 
+               count(i -> i == :black, node_colors_min)) <= 1
+            return node_colors_max, 2^n 
+        end
+    end
+end
+
+# ╔═╡ 2257e9dc-7dda-45f2-b7ed-5939da887454
+md"""
+Generamos las muestras utilizadas utilizando los valores $\beta$ del punto anterior ($0.1, 0.4, 0.9$).
+"""
+
+# ╔═╡ 70cd7ff4-d196-4a02-8fa6-77b36b49fa4a
+begin
+    samples_pw = Dict{Float64, Vector{Vector{Symbol}}}()
+	coalescence_times = Dict{Float64, Vector{Int}}()
+	
+    for beta in beta_values # beta_values = [0.1, 0.4, 0.9]
+        samples_pw[beta] = Vector{Vector{Symbol}}()
+		coalescence_times[beta] = Vector{Int}()
+        for _ in 1:100
+			node_colors_, coalesence_time = run_propp_wilson_()
+	        push!(samples_pw[beta], node_colors_)
+	        push!(coalescence_times[beta], coalesence_time)
+        end
+    end
+end
+
+# ╔═╡ 9b8eb208-6c79-4ae8-9ccb-cff79db52b99
+begin
+igs = []
+for beta in beta_values
+    avg_black_ = mean([count(x -> x == :black, sample) for sample in samples_pw[beta]])
+    println("Para β = $beta, el número promedio de nodos negros es: $avg_black_")
+    
+    push!(igs, histogram([count(x -> x == :black, sample) for sample in samples_pw[beta]],
+              title="Distribución de nodos negros (β = $beta)",
+              xlabel="Número de nodos negros", ylabel="Frecuencia"))
+    savefig("propp_wilson_histogram_beta_$beta.png")
+end
+end
+
+# ╔═╡ f34d2726-4683-44c6-8d39-c2fca2888f07
+Plots.plot(igs..., layout=plot_layout, size=(800, 800))
 
 # ╔═╡ 31784823-128e-4705-9884-a2178f2b950b
 md"""
-**c)** Estime con los incisos anteriores, $\mathbb{E}[M(\eta)]$In, donde $M(\eta) = \frac{1}{| V_k |} \sum_{x \in V_k} \eta_x$
+**c)** Estime con los incisos anteriores, $\mathbb{E}[M(\eta)]$, donde $M(\eta) = \frac{1}{| V_k |} \sum_{x \in V_k} \eta_x$
 """
 
-# ╔═╡ 672cce53-e7c3-42a6-803a-7e3bdcc5f5a3
+# ╔═╡ af6552f1-10c0-4422-b930-49d61a389c14
+md"""
+Reporte:
+- Tiempo de coalescencia en P-W.
+- Comparación de las estimativas obtenidas en **c)**.
+"""
+
+# ╔═╡ bc9c8ea1-3cca-43e0-96fb-da3961c7ca85
 md"""
 #### Solución:
 """
@@ -254,9 +632,6 @@ Luego de realizar diferentes experimentos, obtuvimos los siguientes resultados:
 
 Podemos graficar los tiempos para los tamaños:
 """
-
-# ╔═╡ a571f268-08eb-4ff6-803f-369d20597646
-
 
 # ╔═╡ 5411a798-90a9-40a3-ac6b-e64e434c6251
 html"""
@@ -439,6 +814,7 @@ Pkg = "44cfe95a-1eb2-52ea-b672-e2afdf69b78f"
 Plots = "91a5bcdd-55d7-5caf-9e0b-520d859cae80"
 PlutoUI = "7f904dfe-b85e-4ff6-b463-dae2292396a8"
 Random = "9a3f8284-a2c9-5f02-9a11-845980a1fd5c"
+Statistics = "10745b16-79ce-11e8-11f9-7d13ad32a3b2"
 
 [compat]
 CSV = "~0.10.14"
@@ -457,7 +833,7 @@ PLUTO_MANIFEST_TOML_CONTENTS = """
 
 julia_version = "1.10.5"
 manifest_format = "2.0"
-project_hash = "b0b75a8b72a2a43ba8f1581a0b063ad7ab00156f"
+project_hash = "944207a400edb627d3c5b2c121b3dafac45146c7"
 
 [[deps.AbstractFFTs]]
 deps = ["LinearAlgebra"]
@@ -2404,20 +2780,47 @@ version = "1.4.1+1"
 # ╟─d5411cbe-e6aa-493f-83c5-d116752a47ed
 # ╟─47d70371-2280-4d4c-95ac-5f7a91de491a
 # ╟─bb2afba8-f301-4b3c-9138-224e37beffb7
+# ╟─ff199a3a-03ea-4ae6-bf76-34b5b4eafdbd
 # ╠═3d12d5be-2115-4b36-b26b-28ffd41e66ea
-# ╟─ebd6a3a8-6b6b-4ea5-97a8-f291f0e81aca
+# ╠═ebd6a3a8-6b6b-4ea5-97a8-f291f0e81aca
+# ╟─0c7de18e-395b-41d1-9ef3-3953ada334a0
 # ╠═63c6c42b-bc6e-4b83-b696-4d1931bf7dff
-# ╠═32c25dd2-a1bc-4896-b7d1-21383f8dca0f
-# ╠═fa0b5700-70b6-4c9e-be15-cb6efcf2e3b3
-# ╠═beaf8a57-b366-4420-b969-c17ee9e87c79
-# ╠═289ece15-e392-42fb-8333-3ad54c11e9e5
-# ╠═95d91788-a726-4200-ad67-064518d46cf4
+# ╠═bf627da0-86fa-45c0-b348-c5aae64ef1d2
+# ╟─95d91788-a726-4200-ad67-064518d46cf4
+# ╟─27fe66e1-bca4-43b4-b80b-5cdc0b7c8461
+# ╠═811221c2-2133-4cd4-9d4d-4714c553b621
 # ╠═37516509-755f-4362-84da-2848fa60e586
+# ╟─ad768f1a-fe16-4008-a542-02868749e74a
 # ╠═ab00a194-cad5-4d06-a469-76cc4c14491d
+# ╟─05996613-b1ea-4ece-8db1-417c2e8a4bd6
 # ╠═3f01aab6-a5da-40bc-86ba-dce594064160
+# ╟─b255ad35-f334-4e1d-acb6-c55f75ce0193
 # ╠═8b871b8a-ed78-42f9-a584-d4940978dcac
+# ╠═d8a99d5d-badf-4fb2-88a9-dbd42162b133
+# ╟─72fc53a4-bad3-42e1-af67-8e158d3b779b
+# ╟─05064ba4-5aec-47a3-92b8-1de6c85592e3
+# ╟─9502e607-dd73-4042-b40f-5ba4f5030e1f
+# ╠═c4279dfa-30bd-44f0-ba5d-2cd6156c4a44
+# ╟─4b069e6a-6db6-44d0-8425-1294a52d954c
+# ╠═9694d02e-67be-415c-8cfd-1759e742da75
+# ╟─e4f44101-8cde-4d3e-ae59-6b143af3ad60
+# ╠═d1f2ee83-4b86-480a-ab7d-9657279351ba
+# ╟─ec3bb15b-10cb-439b-ba80-33ba75798261
+# ╠═53ed3752-1938-46f8-9ca0-6853ffbfb49e
+# ╠═86658717-3ba2-45e7-8f59-a1c2b0baece2
+# ╟─623591f6-b80a-4ce1-b84b-9370c844798a
+# ╠═a143b4dd-e490-42b7-9e74-de8dd4299f1f
 # ╟─bd776356-06db-48ae-9fb1-0c44f88bab48
 # ╠═820b72be-2b3b-4575-bbe9-a8a6d33cbd84
+# ╠═2764bd42-80f7-4f47-9143-1b4afb169a66
+# ╟─04aef209-c47e-4c58-bd0f-01b2a7796a50
+# ╠═69f25093-437e-4979-b06d-5d665b3300b8
+# ╟─b91d1240-3f61-489b-a7ad-1f1e7fb6854a
+# ╠═8071e7d2-5349-4e8c-8579-78ced716a7ac
+# ╟─32d58e8b-227d-41a6-98de-136ee0587a12
+# ╟─26545262-4656-443b-8a54-86b9a93c45ad
+# ╟─eeb78433-b452-41b9-a191-21ad008a5abc
+# ╟─61c685d1-6e0e-4a70-a48b-0c7cb643c3b1
 # ╟─c123050b-b40c-48df-a9a8-0f5b23255cb3
 # ╟─6971bf01-0caa-49e3-b439-1fb7885d9d21
 # ╟─927b401f-0c12-4534-aa50-0430a9fdc86b
@@ -2425,11 +2828,16 @@ version = "1.4.1+1"
 # ╠═49377ecc-f8a4-4b68-8fc7-753091f7170a
 # ╠═ad49ad52-17cc-478a-859d-a28afa314165
 # ╠═2b0f0ce3-e54c-45b2-a8e1-dfb7242f3a8c
+# ╟─0fac8d0a-b880-4a10-a775-0a1ef2552695
+# ╟─cfdb3fa1-de24-4ff5-a97d-9563f45a81ed
+# ╟─2257e9dc-7dda-45f2-b7ed-5939da887454
 # ╠═70cd7ff4-d196-4a02-8fa6-77b36b49fa4a
+# ╠═9b8eb208-6c79-4ae8-9ccb-cff79db52b99
+# ╠═f34d2726-4683-44c6-8d39-c2fca2888f07
 # ╟─31784823-128e-4705-9884-a2178f2b950b
-# ╟─672cce53-e7c3-42a6-803a-7e3bdcc5f5a3
+# ╟─af6552f1-10c0-4422-b930-49d61a389c14
+# ╟─bc9c8ea1-3cca-43e0-96fb-da3961c7ca85
 # ╟─a6f588fb-8c55-46e0-8b1f-809b1022a2aa
-# ╠═a571f268-08eb-4ff6-803f-369d20597646
 # ╟─5411a798-90a9-40a3-ac6b-e64e434c6251
 # ╟─97ae4be7-3bba-41a1-af61-082c8976007b
 # ╟─cc86854f-f3e1-4c39-82be-bdda5ebc2073
