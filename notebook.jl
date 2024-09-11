@@ -237,7 +237,7 @@ Para generar las $100$ muestras, consideremos $\beta = 0.1, 0.4, 0.9$.
 """
 
 # ╔═╡ c4279dfa-30bd-44f0-ba5d-2cd6156c4a44
-beta_values = [0.1, 0.4, 0.9]
+beta_values = [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9]
 
 # ╔═╡ 4b069e6a-6db6-44d0-8425-1294a52d954c
 md"""
@@ -282,8 +282,8 @@ Creamos una figura para mostrar los resultados, visualizaremos los estados $X_{1
 
 # ╔═╡ 53ed3752-1938-46f8-9ca0-6853ffbfb49e
 begin
-	fig = Figure(size = (800, 800))
-	axes = [Axis(fig[i, j], aspect = DataAspect()) for i in 1:3, j in 1:3]
+	fig = Figure(size = (1000, 1000))
+	axes = [Axis(fig[i, j], aspect = DataAspect()) for i in 1:9, j in 1:3]
 	for (i, beta) in enumerate(beta_values)
     	for (j, j1) in enumerate([10^3, 10^4, 10^5])
         	state_index = j1  # 1 -> 10^3, 2 -> 10^4, 3 -> 10^5
@@ -315,6 +315,11 @@ for beta in beta_values
         println("Para β = $beta, t = 10^$(j+2), el promedio de nodos negros es: $avg_black")
     end
 end
+
+# ╔═╡ 617c8e03-f2b3-4a2c-b9dc-0d3dcb0d4ece
+md"""
+Lo cual tiene mucho sentido pues para $\beta$ mayor a $\beta_c$ el valor de un spin tiende a dominar el retículo.
+"""
 
 # ╔═╡ bd776356-06db-48ae-9fb1-0c44f88bab48
 md"""
@@ -386,8 +391,8 @@ Y visualizamos los estados $X_{10^3}$, $X_{10^4}$ y $X_{10^5}$ de la última mue
 
 # ╔═╡ 8071e7d2-5349-4e8c-8579-78ced716a7ac
 begin
-	fig1 = Figure(size = (800, 800))
-	axes1 = [Axis(fig1[i, j], aspect = DataAspect()) for i in 1:3, j in 1:3]
+	fig1 = Figure(size = (1000, 1000))
+	axes1 = [Axis(fig1[i, j], aspect = DataAspect()) for i in 1:9, j in 1:3]
 	for (i, beta) in enumerate(beta_values)
     	for (j, j1) in enumerate([10^3, 10^4, 10^5])
         	state_index1 = j1  # 1 -> 10^3, 2 -> 10^4, 3 -> 10^5
@@ -434,7 +439,7 @@ begin
     	avg_metropolis[beta] = [avg_black_nodes([sample[i] for sample in samples_m[beta]]) for i in Int.([1, 10, 1e2, 1e3, 1e4, 1e5])]
 	end
 
-	plot_layout = @layout [a; b; c]
+	plot_layout = @layout [a; b; c; d; e; f; g; h; i]
 	plots = []
 	times = [1, 10, 1e2, 1e3, 1e4, 1e5]
 
@@ -444,13 +449,13 @@ begin
     	Plots.plot!(p, log10.(times), avg_metropolis[beta], label="Metropolis", marker=:square, 
           linewidth=2, markersize=6, linestyle=:dash)
     	Plots.xlabel!(p, "log10(tiempo)")
-    	Plots.ylabel!(p, "Promedio de nodos negros")
+    	Plots.ylabel!(p, "Promedio - nodos +1")
     	Plots.title!(p, "β = $(beta)")
 		title!(p, "Comparación Gibbs vs Metropolis β = $(beta)")
     	push!(plots, p)
 	end
 
-	final_plot = Plots.plot(plots..., layout=plot_layout, size=(800, 800))
+	final_plot = Plots.plot(plots..., layout=plot_layout, size=(1100, 1100))
 
 end
 
@@ -463,6 +468,39 @@ md"""
 md"""
 #### Solución:
 """
+
+# ╔═╡ adecac3e-fe1c-4e0f-b42d-ffd3ea95e829
+md"""
+Modificamos brevemente la función `gibbs_sampler` para conservar los mismo números aleatorios utilizados y utilizarlos en las cadenas que generaremos usandosela el algoritmo Propp-Wilson:
+"""
+
+# ╔═╡ 5bcc83f0-301c-40f9-933e-038bce3f0047
+begin
+	global random_dict = Dict{Int, Float64}()
+
+	function gibbs_sampler_pw(g, p, time)
+		v = rand( 1:k^2); 
+	
+		k_plus_v, k_minus_v = neighbor_vertex(g, v, p)
+	
+		if !haskey(random_dict, time)
+			random_dict[time] = rand()
+		end
+		
+		u_n1 = random_dict[time]
+
+		bound_upp = exp(2*beta_1a*(k_plus_v - k_minus_v))  / (exp(2*beta_1a*(k_plus_v - k_minus_v)) + 1)
+	
+		if u_n1 < bound_upp
+			p.node_color[][v] = :black
+			p.node_color = p.node_color[]
+		else
+			p.node_color[][v] = :white
+			p.node_color = p.node_color[]
+		end
+
+	end
+end
 
 # ╔═╡ 927b401f-0c12-4534-aa50-0430a9fdc86b
 md"""
@@ -496,8 +534,8 @@ function Propp_Wilson_iter(n) # time of starting: 2^n
 	ax_max.aspect = DataAspect()
 
 	for i in -2^n:0
-		gibbs_sampler(g_min, p_min)
-		gibbs_sampler(g_max, p_max)
+		gibbs_sampler_pw(g_min, p_min, i)
+		gibbs_sampler_pw(g_max, p_max, i)
 	end
 	
 	return (f_max, ax_max, p_max), (f_min, ax_min, p_min)
@@ -532,8 +570,29 @@ m_
 # ╔═╡ 2b0f0ce3-e54c-45b2-a8e1-dfb7242f3a8c
 mi_
 
+# ╔═╡ cdb6b40b-e1eb-4322-a28a-3679590b85ab
+function gibbs_sampler_pw_(g, node_colors, beta, time)
+    v = rand(1:nv(g))
+    k_plus, k_minus = neighbor_vertex_(g, v, node_colors)
+    
+    if !haskey(random_dict, time)
+        random_dict[time] = rand()
+    end
+    u_n1 = random_dict[time]
+    
+    bound_upp = exp(2*beta*(k_plus - k_minus)) / (exp(2*beta*(k_plus - k_minus)) + 1)
+    
+    if u_n1 < bound_upp
+        node_colors[v] = :black
+    else
+        node_colors[v] = :white
+    end
+    
+    return node_colors
+end
+
 # ╔═╡ 0fac8d0a-b880-4a10-a775-0a1ef2552695
-function Propp_Wilson_iter_(n)
+function Propp_Wilson_iter_(n, beta)
     g_min = Graphs.grid([k, k])
     node_colors_min = [:white for i in 1:nv(g_min)]
     
@@ -541,23 +600,22 @@ function Propp_Wilson_iter_(n)
     node_colors_max = [:black for i in 1:nv(g_max)]
     
     for i in -2^n:0
-        node_colors_min = gibbs_sampler_(g_min, node_colors_min, beta_1a)
-        node_colors_max = gibbs_sampler_(g_max, node_colors_max, beta_1a)
+        node_colors_min = gibbs_sampler_pw_(g_min, node_colors_min, beta, i)
+        node_colors_max = gibbs_sampler_pw_(g_max, node_colors_max, beta, i)
     end
     
     return node_colors_max, node_colors_min
 end
 
 # ╔═╡ cfdb3fa1-de24-4ff5-a97d-9563f45a81ed
-function run_propp_wilson_()
+function run_propp_wilson_(beta, cv)
     n = 1
     while true
-        node_colors_max, node_colors_min = Propp_Wilson_iter_(n)
+        node_colors_max, node_colors_min = Propp_Wilson_iter_(n, beta)
         
         n += 1
         
-        if abs(count(i -> i == :black, node_colors_max) - 
-               count(i -> i == :black, node_colors_min)) <= 1
+        if abs(count(i -> i == :black, node_colors_max) - count(i -> i == :black, node_colors_min)) <= 1 || (n > 10 && cv == true)
             return node_colors_max, 2^n 
         end
     end
@@ -573,14 +631,25 @@ begin
     samples_pw = Dict{Float64, Vector{Vector{Symbol}}}()
 	coalescence_times = Dict{Float64, Vector{Int}}()
 	
-    for beta in beta_values # beta_values = [0.1, 0.4, 0.9]
+    for beta in [0.1, 0.4]
         samples_pw[beta] = Vector{Vector{Symbol}}()
 		coalescence_times[beta] = Vector{Int}()
         for _ in 1:100
-			node_colors_, coalesence_time = run_propp_wilson_()
+			node_colors_, coalesence_time = run_propp_wilson_(beta, false)
 	        push!(samples_pw[beta], node_colors_)
 	        push!(coalescence_times[beta], coalesence_time)
         end
+    end
+end
+
+# ╔═╡ b35e073c-f51b-4415-bdd8-471930c9243f
+for beta in [0.2, 0.3, 0.5, 0.6, 0.7, 0.8, 0.9]
+    samples_pw[beta] = Vector{Vector{Symbol}}()
+	coalescence_times[beta] = Vector{Int}()
+    for _ in 1:100
+		node_colors_, coalesence_time = run_propp_wilson_(beta, true)
+        push!(samples_pw[beta], node_colors_)
+        push!(coalescence_times[beta], coalesence_time)
     end
 end
 
@@ -599,7 +668,7 @@ end
 end
 
 # ╔═╡ f34d2726-4683-44c6-8d39-c2fca2888f07
-Plots.plot(igs..., layout=plot_layout, size=(800, 800))
+Plots.plot(igs..., layout=plot_layout, size=(900, 1000))
 
 # ╔═╡ 31784823-128e-4705-9884-a2178f2b950b
 md"""
@@ -618,20 +687,55 @@ md"""
 #### Solución:
 """
 
-# ╔═╡ a6f588fb-8c55-46e0-8b1f-809b1022a2aa
+# ╔═╡ d143f6ac-6bfc-4c7d-a19b-3b25f01db902
 md"""
-Luego de realizar diferentes experimentos, obtuvimos los siguientes resultados:
-
-* Tiempo de Coalescencia de Propp Wilson: Tomando varios tamaños para el grafo del modelo de Ising, tenemos los siguientes tiempos:
-
-	* Para $k = 5$, el tiempo es
-
-	* Para $k = 10$, el tiempo es
-
-	* Para $k = 15$, el tiempo es
-
-Podemos graficar los tiempos para los tamaños:
+- Comparación de las estimativas:
 """
+
+# ╔═╡ 221526ff-f8ce-4b09-89f2-eb2bd2b4a86d
+md"""
+Definimos la función para calcular la magnetización de una configuración dada:
+"""
+
+# ╔═╡ 4dcc48c6-b307-4c5f-bbae-aee1bce2313a
+function calculate_M(config)
+	return abs(mean(config .== :black) - mean(config .== :white))
+end
+
+# ╔═╡ 2735dc46-f419-4a52-b503-7bab961ad52d
+md"""
+Definimos la función para calcular el promedio de la magnetización en un conjunto dado de muestras:
+"""
+
+# ╔═╡ 63d9dfea-9ffa-441c-93bb-61034b900b6b
+function promedio_M(samples)
+	return mean(calculate_M.(samples))
+end
+
+# ╔═╡ f615c77e-5e15-42ac-91f6-a857d4a07f9a
+md"""
+Recordemos que guardamos las muestras obtenidas mediante MCMC (caso Gibbs sampler) y Prop-Wilson en los diccionarios `samples` y `samples_pw`, respectivamente.
+"""
+
+# ╔═╡ 0c9db128-11eb-443e-b4a5-cfa11f6d6073
+samples_pw
+
+# ╔═╡ 3a652b62-1fd1-4fc2-80dc-ed92744f13fa
+avg_mag_mcmc = Dict(beta => promedio_M(samples_m[beta][end]) for beta in beta_values)
+
+# ╔═╡ 46419e4b-a8b8-4ad8-9c90-c591fc56e823
+avg_mag_pw = Dict(beta => promedio_M(samples_pw[beta]) for beta in beta_values)
+
+# ╔═╡ ba1b31ec-b397-40e4-a20d-8091f444c860
+begin
+	p_avg = Plots.plot(beta_values, [avg_mag_mcmc[beta] for beta in beta_values], label = "MCMC", maker = :circle, linewidth=2, size = (600, 400))
+	
+	Plots.plot!(beta_values, [avg_mag_pw[beta] for beta in beta_values], label = "P-W", maker = :square, linewidth=2)
+
+	Plots.xlabel!(p_avg, "β")
+	Plots.ylabel!(p_avg, "Magnetización promedio")
+	Plots.title!(p_avg, "MCMC vs PW: Magnetización promedio")
+end
 
 # ╔═╡ 5411a798-90a9-40a3-ac6b-e64e434c6251
 html"""
@@ -2810,6 +2914,7 @@ version = "1.4.1+1"
 # ╠═86658717-3ba2-45e7-8f59-a1c2b0baece2
 # ╟─623591f6-b80a-4ce1-b84b-9370c844798a
 # ╠═a143b4dd-e490-42b7-9e74-de8dd4299f1f
+# ╟─617c8e03-f2b3-4a2c-b9dc-0d3dcb0d4ece
 # ╟─bd776356-06db-48ae-9fb1-0c44f88bab48
 # ╠═820b72be-2b3b-4575-bbe9-a8a6d33cbd84
 # ╠═2764bd42-80f7-4f47-9143-1b4afb169a66
@@ -2823,21 +2928,34 @@ version = "1.4.1+1"
 # ╟─61c685d1-6e0e-4a70-a48b-0c7cb643c3b1
 # ╟─c123050b-b40c-48df-a9a8-0f5b23255cb3
 # ╟─6971bf01-0caa-49e3-b439-1fb7885d9d21
+# ╟─adecac3e-fe1c-4e0f-b42d-ffd3ea95e829
+# ╠═5bcc83f0-301c-40f9-933e-038bce3f0047
 # ╟─927b401f-0c12-4534-aa50-0430a9fdc86b
 # ╠═dea46c42-7a17-4bfd-926e-0b488497cd1d
 # ╠═49377ecc-f8a4-4b68-8fc7-753091f7170a
 # ╠═ad49ad52-17cc-478a-859d-a28afa314165
 # ╠═2b0f0ce3-e54c-45b2-a8e1-dfb7242f3a8c
-# ╟─0fac8d0a-b880-4a10-a775-0a1ef2552695
-# ╟─cfdb3fa1-de24-4ff5-a97d-9563f45a81ed
+# ╠═cdb6b40b-e1eb-4322-a28a-3679590b85ab
+# ╠═0fac8d0a-b880-4a10-a775-0a1ef2552695
+# ╠═cfdb3fa1-de24-4ff5-a97d-9563f45a81ed
 # ╟─2257e9dc-7dda-45f2-b7ed-5939da887454
 # ╠═70cd7ff4-d196-4a02-8fa6-77b36b49fa4a
+# ╠═b35e073c-f51b-4415-bdd8-471930c9243f
 # ╠═9b8eb208-6c79-4ae8-9ccb-cff79db52b99
 # ╠═f34d2726-4683-44c6-8d39-c2fca2888f07
 # ╟─31784823-128e-4705-9884-a2178f2b950b
 # ╟─af6552f1-10c0-4422-b930-49d61a389c14
 # ╟─bc9c8ea1-3cca-43e0-96fb-da3961c7ca85
-# ╟─a6f588fb-8c55-46e0-8b1f-809b1022a2aa
+# ╟─d143f6ac-6bfc-4c7d-a19b-3b25f01db902
+# ╟─221526ff-f8ce-4b09-89f2-eb2bd2b4a86d
+# ╠═4dcc48c6-b307-4c5f-bbae-aee1bce2313a
+# ╟─2735dc46-f419-4a52-b503-7bab961ad52d
+# ╠═63d9dfea-9ffa-441c-93bb-61034b900b6b
+# ╟─f615c77e-5e15-42ac-91f6-a857d4a07f9a
+# ╠═0c9db128-11eb-443e-b4a5-cfa11f6d6073
+# ╠═3a652b62-1fd1-4fc2-80dc-ed92744f13fa
+# ╠═46419e4b-a8b8-4ad8-9c90-c591fc56e823
+# ╠═ba1b31ec-b397-40e4-a20d-8091f444c860
 # ╟─5411a798-90a9-40a3-ac6b-e64e434c6251
 # ╟─97ae4be7-3bba-41a1-af61-082c8976007b
 # ╟─cc86854f-f3e1-4c39-82be-bdda5ebc2073
