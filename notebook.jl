@@ -60,6 +60,11 @@ Definamos el valor de $k$:
 # ╔═╡ 3d12d5be-2115-4b36-b26b-28ffd41e66ea
 k
 
+# ╔═╡ 3fc727da-ceea-444f-8d72-f3fbdca7eaa6
+md"""
+Para este notebook usaremos $k=5$ debido a los tiempos de ejecución.
+"""
+
 # ╔═╡ 0c7de18e-395b-41d1-9ef3-3953ada334a0
 md"""
 Inicialicemos el grafo reticular, haciendo uso de la librería *Graphs*:
@@ -233,7 +238,7 @@ end
 
 # ╔═╡ 9502e607-dd73-4042-b40f-5ba4f5030e1f
 md"""
-Para generar las $100$ muestras, consideremos $\beta = 0.1, 0.4, 0.9$.
+Para generar las $100$ muestras, consideremos $\beta = 0.1, 0.2, 0.3, ..., 0.8, 0.9$.
 """
 
 # ╔═╡ c4279dfa-30bd-44f0-ba5d-2cd6156c4a44
@@ -282,7 +287,7 @@ Creamos una figura para mostrar los resultados, visualizaremos los estados $X_{1
 
 # ╔═╡ 53ed3752-1938-46f8-9ca0-6853ffbfb49e
 begin
-	fig = Figure(size = (1000, 1000))
+	fig = Figure(size = (1500, 1500))
 	axes = [Axis(fig[i, j], aspect = DataAspect()) for i in 1:9, j in 1:3]
 	for (i, beta) in enumerate(beta_values)
     	for (j, j1) in enumerate([10^3, 10^4, 10^5])
@@ -316,14 +321,44 @@ for beta in beta_values
     end
 end
 
-# ╔═╡ 617c8e03-f2b3-4a2c-b9dc-0d3dcb0d4ece
+# ╔═╡ 38e4957d-487a-437d-b89d-00ca8150d32d
+begin
+	function avg_black_nodes_(samples)
+    	return mean([count(x -> x == :black, sample) for sample in samples])
+	end
+
+	avg_gibbs_ = Dict()
+
+	for beta in beta_values
+    	avg_gibbs_[beta] = [avg_black_nodes_([sample[i] for sample in samples[beta]]) for i in Int.([1, 10, 1e2, 1e3, 1e4, 1e5])]
+	end
+
+	plot_layout = @layout [a; b; c; d; e]
+	plots = []
+	times = [1, 10, 1e2, 1e3, 1e4, 1e5]
+
+	for (i, beta) in enumerate([0.1, 0.3, 0.5, 0.7, 0.9])
+    	p = Plots.plot(log10.(times), avg_gibbs_[beta], label="Gibbs", marker=:circle, 
+             linewidth=2, markersize=6, legend=:bottomright)
+    	Plots.xlabel!(p, "log10(tiempo)")
+    	Plots.ylabel!(p, "Promedio - nodos +1")
+    	Plots.title!(p, "β = $(beta)")
+		title!(p, "Promedio nodos negros Gibbs sampler β = $(beta)")
+    	push!(plots, p)
+	end
+
+	final_plot = Plots.plot(plots..., layout=plot_layout, size=(1100, 1100))
+
+end
+
+# ╔═╡ 05592f7c-a087-4141-9f6e-ae78ba643336
 md"""
 Lo cual tiene mucho sentido pues para $\beta$ mayor a $\beta_c$ el valor de un spin tiende a dominar el retículo.
 """
 
 # ╔═╡ bd776356-06db-48ae-9fb1-0c44f88bab48
 md"""
-Podemos construir también una cadena Metropolis, y comparar los dos procedimientos.
+También mostraremos el código en caso de que quisiéramos implementar las cadeas utilizando Metropolis en lugar de Gibbs sampler:
 """
 
 # ╔═╡ 820b72be-2b3b-4575-bbe9-a8a6d33cbd84
@@ -371,10 +406,12 @@ end
 
 # ╔═╡ 04aef209-c47e-4c58-bd0f-01b2a7796a50
 md"""
-Generamos las muestras:
+Generaríamos las muestras así:
 """
 
 # ╔═╡ 69f25093-437e-4979-b06d-5d665b3300b8
+# ╠═╡ disabled = true
+#=╠═╡
 begin
 	Random.seed!(100) # Semilla para replicar resultados
 	samples_m = Dict{Float64, Vector{Vector{Vector{Symbol}}}}()
@@ -383,13 +420,16 @@ begin
 	    samples_m[beta] = [run_metropolis(g_1a, beta, 10^5) for _ in 1:100]
 	end
 end
+  ╠═╡ =#
 
 # ╔═╡ b91d1240-3f61-489b-a7ad-1f1e7fb6854a
 md"""
-Y visualizamos los estados $X_{10^3}$, $X_{10^4}$ y $X_{10^5}$ de la última muestra obtenida para cada $\beta$:
+Así visualizaríamos los estados $X_{10^3}$, $X_{10^4}$ y $X_{10^5}$ de la última muestra obtenida para cada $\beta$:
 """
 
 # ╔═╡ 8071e7d2-5349-4e8c-8579-78ced716a7ac
+# ╠═╡ disabled = true
+#=╠═╡
 begin
 	fig1 = Figure(size = (1000, 1000))
 	axes1 = [Axis(fig1[i, j], aspect = DataAspect()) for i in 1:9, j in 1:3]
@@ -407,16 +447,19 @@ begin
     	end
 	end
 end
+  ╠═╡ =#
 
 # ╔═╡ 32d58e8b-227d-41a6-98de-136ee0587a12
-fig1
+#fig1
 
 # ╔═╡ 26545262-4656-443b-8a54-86b9a93c45ad
 md"""
-Veamos algunas estadísticas y comparemos con los resultados obtenidos con Gibbs sampler:
+Para ver algunas estadísticas:
 """
 
 # ╔═╡ eeb78433-b452-41b9-a191-21ad008a5abc
+# ╠═╡ disabled = true
+#=╠═╡
 for beta in beta_values
     for (j, j1) in enumerate([10^3, 10^4, 10^5])
         state_index = j1
@@ -424,40 +467,41 @@ for beta in beta_values
         println("Para β = $beta, t = 10^$(j+2), el promedio de nodos negros es: $avg_black")
     end
 end
+  ╠═╡ =#
 
 # ╔═╡ 61c685d1-6e0e-4a70-a48b-0c7cb643c3b1
-begin
-	function avg_black_nodes(samples)
-    	return mean([count(x -> x == :black, sample) for sample in samples])
-	end
+# begin
+# 	function avg_black_nodes(samples)
+#     	return mean([count(x -> x == :black, sample) for sample in samples])
+# 	end
 
-	avg_gibbs = Dict()
-	avg_metropolis = Dict()
+# 	avg_gibbs = Dict()
+# 	avg_metropolis = Dict()
 
-	for beta in beta_values
-    	avg_gibbs[beta] = [avg_black_nodes([sample[i] for sample in samples[beta]]) for i in Int.([1, 10, 1e2, 1e3, 1e4, 1e5])]
-    	avg_metropolis[beta] = [avg_black_nodes([sample[i] for sample in samples_m[beta]]) for i in Int.([1, 10, 1e2, 1e3, 1e4, 1e5])]
-	end
+# 	for beta in beta_values
+#     	avg_gibbs[beta] = [avg_black_nodes([sample[i] for sample in samples[beta]]) for i in Int.([1, 10, 1e2, 1e3, 1e4, 1e5])]
+#     	avg_metropolis[beta] = [avg_black_nodes([sample[i] for sample in samples_m[beta]]) for i in Int.([1, 10, 1e2, 1e3, 1e4, 1e5])]
+# 	end
 
-	plot_layout = @layout [a; b; c; d; e; f; g; h; i]
-	plots = []
-	times = [1, 10, 1e2, 1e3, 1e4, 1e5]
+# 	plot_layout = @layout [a; b; c; d; e; f; g; h; i]
+# 	plots = []
+# 	times = [1, 10, 1e2, 1e3, 1e4, 1e5]
 
-	for (i, beta) in enumerate(beta_values)
-    	p = Plots.plot(log10.(times), avg_gibbs[beta], label="Gibbs", marker=:circle, 
-             linewidth=2, markersize=6, legend=:bottomright)
-    	Plots.plot!(p, log10.(times), avg_metropolis[beta], label="Metropolis", marker=:square, 
-          linewidth=2, markersize=6, linestyle=:dash)
-    	Plots.xlabel!(p, "log10(tiempo)")
-    	Plots.ylabel!(p, "Promedio - nodos +1")
-    	Plots.title!(p, "β = $(beta)")
-		title!(p, "Comparación Gibbs vs Metropolis β = $(beta)")
-    	push!(plots, p)
-	end
+# 	for (i, beta) in enumerate(beta_values)
+#     	p = Plots.plot(log10.(times), avg_gibbs[beta], label="Gibbs", marker=:circle, 
+#              linewidth=2, markersize=6, legend=:bottomright)
+#     	Plots.plot!(p, log10.(times), avg_metropolis[beta], label="Metropolis", marker=:square, 
+#           linewidth=2, markersize=6, linestyle=:dash)
+#     	Plots.xlabel!(p, "log10(tiempo)")
+#     	Plots.ylabel!(p, "Promedio - nodos +1")
+#     	Plots.title!(p, "β = $(beta)")
+# 		title!(p, "Comparación Gibbs vs Metropolis β = $(beta)")
+#     	push!(plots, p)
+# 	end
 
-	final_plot = Plots.plot(plots..., layout=plot_layout, size=(1100, 1100))
+# 	final_plot = Plots.plot(plots..., layout=plot_layout, size=(1100, 1100))
 
-end
+# end
 
 # ╔═╡ c123050b-b40c-48df-a9a8-0f5b23255cb3
 md"""
@@ -471,7 +515,7 @@ md"""
 
 # ╔═╡ adecac3e-fe1c-4e0f-b42d-ffd3ea95e829
 md"""
-Modificamos brevemente la función `gibbs_sampler` para conservar los mismo números aleatorios utilizados y utilizarlos en las cadenas que generaremos usandosela el algoritmo Propp-Wilson:
+Modificamos brevemente la función `gibbs_sampler` para conservar los mismo números aleatorios que se van utilizado (los guardaremos en `random_dict`. Los guardaremos en las cadenas que generaremos usando el algoritmo Propp-Wilson:
 """
 
 # ╔═╡ 5bcc83f0-301c-40f9-933e-038bce3f0047
@@ -542,6 +586,11 @@ function Propp_Wilson_iter(n) # time of starting: 2^n
 	
 end
 
+# ╔═╡ 09d4db45-7ade-4708-8e2b-50c32b6b3a37
+md"""
+A continuación corremos el algoritmo. Una modificación notable es que las cadenas coalescerán en el momento en el que el número de nodos negros sea el mismo o difieran en uno a lo sumo, esto debido a que el tiempo de coalescencia para que las cadenas lleguen a exactamente el mismo estado parece ser muy grande. En términos prácticos conseguimos los resultados deseados.
+"""
+
 # ╔═╡ 49377ecc-f8a4-4b68-8fc7-753091f7170a
 begin
 	m_ = 0
@@ -563,6 +612,11 @@ begin
 		end
 	end
 end
+
+# ╔═╡ 01ca8cde-a258-4fb5-9fd7-9cd097016fce
+md"""
+A continuación podemos observar los estados finales de las dos cadenas corridas (max-min).
+"""
 
 # ╔═╡ ad49ad52-17cc-478a-859d-a28afa314165
 m_
@@ -626,37 +680,32 @@ md"""
 Generamos las muestras utilizadas utilizando los valores $\beta$ del punto anterior ($0.1, 0.4, 0.9$).
 """
 
+# ╔═╡ ae678487-6934-4489-bb9e-770f294dd4ea
+
+
+# ╔═╡ 42132007-59d6-4b97-8919-77c61893ad08
+begin
+	samples_pw = Dict{Float64, Vector{Vector{Symbol}}}()
+	coalescence_times = Dict{Float64, Vector{Int}}()
+end
+
 # ╔═╡ 70cd7ff4-d196-4a02-8fa6-77b36b49fa4a
 begin
-    samples_pw = Dict{Float64, Vector{Vector{Symbol}}}()
-	coalescence_times = Dict{Float64, Vector{Int}}()
-	
-    for beta in [0.1, 0.4]
+    for beta in [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9]
         samples_pw[beta] = Vector{Vector{Symbol}}()
 		coalescence_times[beta] = Vector{Int}()
         for _ in 1:100
-			node_colors_, coalesence_time = run_propp_wilson_(beta, false)
+			node_colors_, coalesence_time = run_propp_wilson_(beta, true)
 	        push!(samples_pw[beta], node_colors_)
 	        push!(coalescence_times[beta], coalesence_time)
         end
     end
 end
 
-# ╔═╡ b35e073c-f51b-4415-bdd8-471930c9243f
-for beta in [0.2, 0.3, 0.5, 0.6, 0.7, 0.8, 0.9]
-    samples_pw[beta] = Vector{Vector{Symbol}}()
-	coalescence_times[beta] = Vector{Int}()
-    for _ in 1:100
-		node_colors_, coalesence_time = run_propp_wilson_(beta, true)
-        push!(samples_pw[beta], node_colors_)
-        push!(coalescence_times[beta], coalesence_time)
-    end
-end
-
 # ╔═╡ 9b8eb208-6c79-4ae8-9ccb-cff79db52b99
 begin
 igs = []
-for beta in beta_values
+for beta in [0.1, 0.3, 0.5, 0.7, 0.9]
     avg_black_ = mean([count(x -> x == :black, sample) for sample in samples_pw[beta]])
     println("Para β = $beta, el número promedio de nodos negros es: $avg_black_")
     
@@ -669,6 +718,11 @@ end
 
 # ╔═╡ f34d2726-4683-44c6-8d39-c2fca2888f07
 Plots.plot(igs..., layout=plot_layout, size=(900, 1000))
+
+# ╔═╡ 5ae4dee7-59c7-4e2a-b074-48094c00e6cb
+md"""
+Allí podemos visualizar el cambio de fase a partir del valor crítico $\beta_c$.
+"""
 
 # ╔═╡ 31784823-128e-4705-9884-a2178f2b950b
 md"""
@@ -717,11 +771,8 @@ md"""
 Recordemos que guardamos las muestras obtenidas mediante MCMC (caso Gibbs sampler) y Prop-Wilson en los diccionarios `samples` y `samples_pw`, respectivamente.
 """
 
-# ╔═╡ 0c9db128-11eb-443e-b4a5-cfa11f6d6073
-samples_pw
-
 # ╔═╡ 3a652b62-1fd1-4fc2-80dc-ed92744f13fa
-avg_mag_mcmc = Dict(beta => promedio_M(samples_m[beta][end]) for beta in beta_values)
+avg_mag_mcmc = Dict(beta => promedio_M(samples[beta][end]) for beta in beta_values)
 
 # ╔═╡ 46419e4b-a8b8-4ad8-9c90-c591fc56e823
 avg_mag_pw = Dict(beta => promedio_M(samples_pw[beta]) for beta in beta_values)
@@ -736,6 +787,11 @@ begin
 	Plots.ylabel!(p_avg, "Magnetización promedio")
 	Plots.title!(p_avg, "MCMC vs PW: Magnetización promedio")
 end
+
+# ╔═╡ e2e8193c-9e22-4385-9f98-ecdb54bd9179
+md"""
+Para los tiempos de coalescencia, tuvimos que parar antes las cadenas debido al tiempo que se tomaban en converger, podemos estimar debido a los tiempos que en su momento duraba el problema ejecutándose que al menos para $\beta > \beta_c$ los tiempos son mayores a $2^{25}$. En cualquier caso podemos observar en la gráfica anterior que se obtienen los resultados que se esperarían.
+"""
 
 # ╔═╡ 5411a798-90a9-40a3-ac6b-e64e434c6251
 html"""
@@ -756,10 +812,17 @@ Reporte:
 """
 
 # ╔═╡ 2b5fa9b5-a722-428f-b6e0-38389a68cc5e
-
+md"""
+Primero, leemos el archivo csv con las coordenadas:
+"""
 
 # ╔═╡ 3851ffe0-1586-46e3-b535-ff09fc64404d
 locations_ = CSV.read("ant_points.csv", DataFrame)
+
+# ╔═╡ 7a13bab0-77ba-48f2-961f-e4b825dc2e98
+md"""
+y las guardamos usando el tipo de dato `Float64` (flotantes):
+"""
 
 # ╔═╡ 6c0a2283-5257-436e-8942-31a316833cb6
 begin
@@ -769,6 +832,12 @@ begin
 	y_points = parse.(Float64, locations__."Coordenada Y");
 end
 
+# ╔═╡ df8071a8-8e0f-493f-b1c6-8db01e073ea3
+x_points
+
+# ╔═╡ 2ec8a73b-8728-467e-9570-588626ee9f2e
+y_points
+
 # ╔═╡ 7661d6fd-fe09-42c5-8df5-04b751c1bcb5
 md"""
 **a)** Use "simulated annealing" para ayudarle a la hormiga a encontrar el camino más corto que recorra todas las parcelas.
@@ -777,6 +846,11 @@ md"""
 # ╔═╡ b3daf446-3fb6-4b8e-9c27-f474a517b444
 md"""
 #### Solución:
+"""
+
+# ╔═╡ 96a1d48a-4eca-431a-aea0-19e61f02d374
+md"""
+Creamos la función `dist_path` para calcular la distancia entre cada par de colonias de acuerdo a sus coordenadas
 """
 
 # ╔═╡ 406dcbd7-c43d-4457-9670-b7f6bd9acff4
@@ -793,6 +867,11 @@ function dist_path(x::Vector, y::Vector)
     return dist
 
 end
+
+# ╔═╡ 4a19aac6-f0ac-4841-bf42-6c4c3da5ed19
+md"""
+Ahora con la siguiente función `new_neighboor` se le asigna un nuevo vecino a cada colonia a partir de la lista original
+"""
 
 # ╔═╡ ac81132b-bf78-4461-9277-5c7ef8a6781d
 # build a neighboor
@@ -813,6 +892,11 @@ function new_neighboor(x::Vector, y::Vector)
     return new_x, new_y
 
 end
+
+# ╔═╡ 62924675-a7f9-45d7-b24b-14bfb156342d
+md"""
+Ahora creamos la función `simulated_annealing_1` usando el algoritmo de simulated annealing para optimizar la distancia entre cada par de colonias la cual convergera a una solución final a medida que la temperatura T baja.
+"""
 
 # ╔═╡ 15600d3b-1095-485a-8db2-608474f41ce3
 function simulated_annealing_1(x::Vector, y::Vector)
@@ -853,10 +937,20 @@ function simulated_annealing_1(x::Vector, y::Vector)
     return curr_points
 end
 
+# ╔═╡ 6cbe372e-6cd9-4922-9a55-1f2fa2a935df
+md"""
+La función devolverá una solución optimizada (en forma de un diccionario con las nuevas coordenadas x, y), la cual se almacenará en `final_neighboor`.
+"""
+
 # ╔═╡ 10a2fd30-8362-495a-b373-53b3f9ab983b
 #gr(size = (800,800))
 # scatter(x, y)
 final_neighboor = simulated_annealing_1(x_points, y_points)
+
+# ╔═╡ 44c89832-d6fb-4484-ba70-887f1d475705
+md"""
+Ahora graficamos las colonias y el recorrido optimizado:
+"""
 
 # ╔═╡ a30afdba-bf81-497b-9ea2-77c01ad6f70f
 begin
@@ -864,6 +958,11 @@ begin
 	Plots.scatter(x_points, y_points)
 	Plots.plot!(final_neighboor["x"], final_neighboor["y"])
 end
+
+# ╔═╡ b431f5cc-5002-49cd-8b26-824b4eec8a09
+md"""
+Obteniendo la siguiente distancia:
+"""
 
 # ╔═╡ b75a35d3-681f-40f2-9631-a8c244040fe6
 dist_path(final_neighboor["x"], final_neighboor["y"])
@@ -884,6 +983,11 @@ x_points_b = copy(x_points)
 # ╔═╡ 267b0faa-9f86-4b9f-997e-b83a631b51e7
 y_points_b = copy(y_points)
 
+# ╔═╡ d0014817-443d-4724-999a-50fb07b25775
+md"""
+Para este punto incluimos el punto de partida para obtener la ruta más corta en la cual la hormiga recorre todos los puntos y vuelve al punto de origen.
+"""
+
 # ╔═╡ 37443ef7-ad88-4c6c-8cf9-f5b3ed0bba47
 begin
 	push!(x_points_b, 0)	
@@ -899,6 +1003,11 @@ begin
 	Plots.scatter(x_points_b, y_points_b)
 	Plots.plot!(final_neighboor_b["x"], final_neighboor_b["y"])
 end
+
+# ╔═╡ 5ce053d0-4c8f-404a-bce4-fd3436bb8a19
+md"""
+Obteniendo la siguiente distancia:
+"""
 
 # ╔═╡ 4b028ae8-e782-4e66-af12-5d8c1315069c
 dist_path(final_neighboor_b["x"], final_neighboor_b["y"])
@@ -2887,6 +2996,7 @@ version = "1.4.1+1"
 # ╟─ff199a3a-03ea-4ae6-bf76-34b5b4eafdbd
 # ╠═3d12d5be-2115-4b36-b26b-28ffd41e66ea
 # ╠═ebd6a3a8-6b6b-4ea5-97a8-f291f0e81aca
+# ╟─3fc727da-ceea-444f-8d72-f3fbdca7eaa6
 # ╟─0c7de18e-395b-41d1-9ef3-3953ada334a0
 # ╠═63c6c42b-bc6e-4b83-b696-4d1931bf7dff
 # ╠═bf627da0-86fa-45c0-b348-c5aae64ef1d2
@@ -2914,7 +3024,8 @@ version = "1.4.1+1"
 # ╠═86658717-3ba2-45e7-8f59-a1c2b0baece2
 # ╟─623591f6-b80a-4ce1-b84b-9370c844798a
 # ╠═a143b4dd-e490-42b7-9e74-de8dd4299f1f
-# ╟─617c8e03-f2b3-4a2c-b9dc-0d3dcb0d4ece
+# ╟─38e4957d-487a-437d-b89d-00ca8150d32d
+# ╟─05592f7c-a087-4141-9f6e-ae78ba643336
 # ╟─bd776356-06db-48ae-9fb1-0c44f88bab48
 # ╠═820b72be-2b3b-4575-bbe9-a8a6d33cbd84
 # ╠═2764bd42-80f7-4f47-9143-1b4afb169a66
@@ -2924,7 +3035,7 @@ version = "1.4.1+1"
 # ╠═8071e7d2-5349-4e8c-8579-78ced716a7ac
 # ╟─32d58e8b-227d-41a6-98de-136ee0587a12
 # ╟─26545262-4656-443b-8a54-86b9a93c45ad
-# ╟─eeb78433-b452-41b9-a191-21ad008a5abc
+# ╠═eeb78433-b452-41b9-a191-21ad008a5abc
 # ╟─61c685d1-6e0e-4a70-a48b-0c7cb643c3b1
 # ╟─c123050b-b40c-48df-a9a8-0f5b23255cb3
 # ╟─6971bf01-0caa-49e3-b439-1fb7885d9d21
@@ -2932,17 +3043,21 @@ version = "1.4.1+1"
 # ╠═5bcc83f0-301c-40f9-933e-038bce3f0047
 # ╟─927b401f-0c12-4534-aa50-0430a9fdc86b
 # ╠═dea46c42-7a17-4bfd-926e-0b488497cd1d
+# ╟─09d4db45-7ade-4708-8e2b-50c32b6b3a37
 # ╠═49377ecc-f8a4-4b68-8fc7-753091f7170a
+# ╟─01ca8cde-a258-4fb5-9fd7-9cd097016fce
 # ╠═ad49ad52-17cc-478a-859d-a28afa314165
 # ╠═2b0f0ce3-e54c-45b2-a8e1-dfb7242f3a8c
 # ╠═cdb6b40b-e1eb-4322-a28a-3679590b85ab
 # ╠═0fac8d0a-b880-4a10-a775-0a1ef2552695
 # ╠═cfdb3fa1-de24-4ff5-a97d-9563f45a81ed
 # ╟─2257e9dc-7dda-45f2-b7ed-5939da887454
+# ╠═ae678487-6934-4489-bb9e-770f294dd4ea
+# ╠═42132007-59d6-4b97-8919-77c61893ad08
 # ╠═70cd7ff4-d196-4a02-8fa6-77b36b49fa4a
-# ╠═b35e073c-f51b-4415-bdd8-471930c9243f
 # ╠═9b8eb208-6c79-4ae8-9ccb-cff79db52b99
 # ╠═f34d2726-4683-44c6-8d39-c2fca2888f07
+# ╟─5ae4dee7-59c7-4e2a-b074-48094c00e6cb
 # ╟─31784823-128e-4705-9884-a2178f2b950b
 # ╟─af6552f1-10c0-4422-b930-49d61a389c14
 # ╟─bc9c8ea1-3cca-43e0-96fb-da3961c7ca85
@@ -2952,31 +3067,42 @@ version = "1.4.1+1"
 # ╟─2735dc46-f419-4a52-b503-7bab961ad52d
 # ╠═63d9dfea-9ffa-441c-93bb-61034b900b6b
 # ╟─f615c77e-5e15-42ac-91f6-a857d4a07f9a
-# ╠═0c9db128-11eb-443e-b4a5-cfa11f6d6073
 # ╠═3a652b62-1fd1-4fc2-80dc-ed92744f13fa
 # ╠═46419e4b-a8b8-4ad8-9c90-c591fc56e823
 # ╠═ba1b31ec-b397-40e4-a20d-8091f444c860
+# ╟─e2e8193c-9e22-4385-9f98-ecdb54bd9179
 # ╟─5411a798-90a9-40a3-ac6b-e64e434c6251
 # ╟─97ae4be7-3bba-41a1-af61-082c8976007b
 # ╟─cc86854f-f3e1-4c39-82be-bdda5ebc2073
-# ╠═2b5fa9b5-a722-428f-b6e0-38389a68cc5e
+# ╟─2b5fa9b5-a722-428f-b6e0-38389a68cc5e
 # ╠═3851ffe0-1586-46e3-b535-ff09fc64404d
+# ╟─7a13bab0-77ba-48f2-961f-e4b825dc2e98
 # ╠═6c0a2283-5257-436e-8942-31a316833cb6
+# ╠═df8071a8-8e0f-493f-b1c6-8db01e073ea3
+# ╠═2ec8a73b-8728-467e-9570-588626ee9f2e
 # ╟─7661d6fd-fe09-42c5-8df5-04b751c1bcb5
 # ╟─b3daf446-3fb6-4b8e-9c27-f474a517b444
+# ╟─96a1d48a-4eca-431a-aea0-19e61f02d374
 # ╠═406dcbd7-c43d-4457-9670-b7f6bd9acff4
+# ╟─4a19aac6-f0ac-4841-bf42-6c4c3da5ed19
 # ╠═ac81132b-bf78-4461-9277-5c7ef8a6781d
+# ╟─62924675-a7f9-45d7-b24b-14bfb156342d
 # ╠═15600d3b-1095-485a-8db2-608474f41ce3
+# ╟─6cbe372e-6cd9-4922-9a55-1f2fa2a935df
 # ╠═10a2fd30-8362-495a-b373-53b3f9ab983b
+# ╟─44c89832-d6fb-4484-ba70-887f1d475705
 # ╠═a30afdba-bf81-497b-9ea2-77c01ad6f70f
+# ╟─b431f5cc-5002-49cd-8b26-824b4eec8a09
 # ╠═b75a35d3-681f-40f2-9631-a8c244040fe6
 # ╟─bea034aa-1ecc-4e93-8ab1-db5bc6c91820
 # ╟─532877d3-bfb6-4a63-b7fe-725af3093530
 # ╠═d1ca2e7e-d05a-4f02-be1a-326aebda393a
 # ╠═267b0faa-9f86-4b9f-997e-b83a631b51e7
+# ╟─d0014817-443d-4724-999a-50fb07b25775
 # ╠═37443ef7-ad88-4c6c-8cf9-f5b3ed0bba47
 # ╠═c8ac2f91-244f-4f97-b110-328872ef51ea
 # ╠═daaa5a65-e274-4ee7-93cc-9f92af6e8f47
+# ╟─5ce053d0-4c8f-404a-bce4-fd3436bb8a19
 # ╠═4b028ae8-e782-4e66-af12-5d8c1315069c
 # ╟─00000000-0000-0000-0000-000000000001
 # ╟─00000000-0000-0000-0000-000000000002
